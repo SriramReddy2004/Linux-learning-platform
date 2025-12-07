@@ -1,0 +1,64 @@
+# version: '3.8'
+
+services:
+  # MongoDB Database
+  mongo:
+    image: mongo:7
+    container_name: llm-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - llm-network
+    environment:
+      MONGO_INITDB_DATABASE: linux_learning_mentor
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: llm-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./backend/logs:/app/logs
+    networks:
+      - llm-network
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - MONGODB_URI=mongodb://mongo:27017/linux_learning_mentor
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-this}
+      - JWT_EXPIRE=7d
+      - DOCKER_HOST=host.docker.internal
+      - DOCKER_PORT=2375
+      - DOCKER_IMAGE=play-with-linux
+      - CORS_ORIGIN=http://localhost
+    depends_on:
+      - mongo
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: llm-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    networks:
+      - llm-network
+    depends_on:
+      - backend
+
+networks:
+  llm-network:
+    driver: bridge
+
+volumes:
+  mongo_data:
