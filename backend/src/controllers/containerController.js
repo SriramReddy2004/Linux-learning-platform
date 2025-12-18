@@ -188,6 +188,16 @@ exports.deleteContainer = async (req, res, next) => {
       await containerService.stopContainer(container.containerId);
     }
 
+    // Remove Docker container from the host
+    try {
+      await containerService.removeContainer(container.containerId);
+    } catch (err) {
+      // If removal failed for reasons other than not-found/conflict, bubble up
+      // Errors with status handled inside removeContainer are logged there.
+      logger.warn(`Docker removal error for ${container.containerId}: ${err?.message || err}`);
+    }
+
+    // Remove record from database
     await Container.findByIdAndDelete(id);
 
     logger.info(`Container deleted: ${container.containerId} by user ${userId}`);

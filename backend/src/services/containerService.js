@@ -89,6 +89,35 @@ class ContainerService {
     }
   }
 
+  async removeContainer(containerId) {
+    try {
+      const container = docker.getContainer(containerId);
+
+      // Try to stop first (ignore already stopped / missing)
+      try {
+        await container.stop({ t: 5 });
+      } catch (stopErr) {
+        // ignore 304 (already stopped) and 404 (not found)
+        if (!(stopErr && stopErr.statusCode && [304, 404].includes(stopErr.statusCode))) {
+          throw stopErr;
+        }
+      }
+
+      // Remove container forcefully to ensure it is cleaned up
+      await container.remove({ force: true, v: false });
+      logger.info(`Container permanently removed: ${containerId}`);
+    } catch (error) {
+      if (error && error.statusCode === 404) {
+        logger.warn(`Container not found: ${containerId}`);
+      } else if (error && error.statusCode === 409) {
+        logger.warn(`Container removal conflict (in use): ${containerId}`);
+      } else {
+        logger.error('Error removing container:', error);
+        throw error;
+      }
+    }
+  }
+
   async getContainerStats(containerId) {
     try {
       const container = docker.getContainer(containerId);
