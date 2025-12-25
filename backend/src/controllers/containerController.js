@@ -146,11 +146,17 @@ exports.restartContainer = async (req, res, next) => {
       });
     }
 
-    await containerService.restartContainer(container.containerId);
+    const result = await containerService.restartContainer(container.containerId);
 
     container.status = 'running';
     container.startedAt = new Date();
     container.stoppedAt = null;
+    
+    // Update SSH port in case it changed
+    if (result && result.sshPort) {
+      container.sshPort = result.sshPort;
+    }
+    
     await container.save();
 
     logger.info(`Container restarted: ${container.containerId} by user ${userId}`);

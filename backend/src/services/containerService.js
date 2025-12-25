@@ -78,12 +78,31 @@ class ContainerService {
   async restartContainer(containerId) {
     try {
       const container = docker.getContainer(containerId);
+      
+      // Use restart to properly restart the container
       await container.restart({ t: 5 }); // 5 second timeout
-      logger.info(`Container restarted: ${containerId}`);
+      
+      // Wait for container to be fully ready and SSH to initialize
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Get updated container info to ensure port mapping is correct
+      const info = await container.inspect();
+      
+      if (!info.State.Running) {
+        throw new Error('Container failed to restart');
+      }
+      
+      // Get the SSH port (it should remain the same after restart since port is already allocated)
+      const sshPort = info.NetworkSettings.Ports['22/tcp']?.[0]?.HostPort;
+      
+      logger.info(`Container restarted: ${containerId} on port ${sshPort}`);
+      
+      return { sshPort: parseInt(sshPort) };
     } catch (error) {
       if (error.statusCode === 404) {
         logger.warn(`Container not found: ${containerId}`);
       } else {
+        logger.error('Error restarting container:', error);
         throw error;
       }
     }
