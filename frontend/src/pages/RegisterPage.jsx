@@ -33,9 +33,9 @@ const RegisterPage = () => {
     try {
       const { confirmPassword, ...registerData } = formData;
       const response = await authService.register(registerData);
-      setAuth(response.data.user, response.data.token);
+      // setAuth(response.data.user, response.data.token);
       toast.success('Registration successful!');
-      navigate('/dashboard');
+      navigate('/login');
     } catch (error) {
       console.error('Registration error:', error);
     } finally {

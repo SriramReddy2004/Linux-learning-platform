@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import { authService } from '../services/authService';
 import { LogOut, User, Terminal } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -7,10 +8,26 @@ const Navbar = () => {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logout();
-    toast.success('Logged out successfully');
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      const hostName = window.location.hostname;
+      await authService.logout();
+      logout();
+      toast.success('Logged out successfully');
+      window.location.replace(
+        `http://${hostName}:4000/logout-remove-token`
+      );
+    } catch (error) {
+      toast.error('Failed to logout. Please try again.');
+      // Optional fallback to clear state in case of backend issue:
+      logout();
+      navigate('/login');
+    }
+  };
+
+  const handleAIAssistant = async () => {
+    const hostName = window.location.hostname;
+    window.open(`http://${hostName}:4000/`).focus();
   };
 
   return (
@@ -34,6 +51,13 @@ const Navbar = () => {
               <User className="w-5 h-5" />
               <span>{user?.username}</span>
             </Link>
+
+            <button
+              onClick={handleAIAssistant}
+              className="px-3 py-1 rounded-md bg-indigo-600 text-white hover:bg-indigo-500 transition"
+            >
+              AI Assistant
+            </button>
 
             <button
               onClick={handleLogout}

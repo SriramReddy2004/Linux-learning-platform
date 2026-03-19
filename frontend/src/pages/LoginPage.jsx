@@ -24,6 +24,10 @@ const LoginPage = () => {
 
     try {
       const response = await authService.login(formData);
+      const hostName = window.location.hostname;
+      window.location.replace(
+        `http://${hostName}:4000/login-with-token#token=${response.data.openWebUIToken}`
+      );
       setAuth(response.data.user, response.data.token);
       toast.success('Login successful!');
       navigate('/dashboard');

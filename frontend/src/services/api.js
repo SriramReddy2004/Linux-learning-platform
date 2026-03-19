@@ -2,7 +2,7 @@ import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 import toast from 'react-hot-toast';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -33,6 +33,10 @@ api.interceptors.response.use(
 
     // Handle 401 unauthorized
     if (error.response?.status === 401) {
+      if(message === 'Invalid credentials') {
+        toast.error('Invalid email or password');
+        return Promise.reject(error);
+      }
       useAuthStore.getState().logout();
       window.location.href = '/login';
       toast.error('Session expired. Please login again.');
