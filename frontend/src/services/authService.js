@@ -25,4 +25,9 @@ export const authService = {
     const response = await api.put('/auth/password', data);
     return response.data;
   },
+
+  async logout() {
+    const response = await api.get('/auth/logout');
+    return response.data;
+  },
 };

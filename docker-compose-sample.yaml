@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:6.0
+    container_name: llm-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - llmnet
+
+  master:
+    build:
+      context: ./
+      dockerfile: ./master/Dockerfile
+    container_name: llm-master
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - MONGODB_URI=mongodb://mongo:27017/llm
+      - JWT_SECRET=change_me
+      - JWT_EXPIRE=7d
+      - ENABLE_FALLBACK_LOCAL=true
+      - DOCKER_HOST=host.docker.internal
+      - DOCKER_PORT=2375
+      - DOCKER_IMAGE=YOUR_PLAY_WITH_LINUX_IMAGE
+      - WORKER_HEALTH_CHECK_INTERVAL=30000
+      - WORKER_HEALTH_TIMEOUT=10000
+      - LOAD_BALANCE_STRATEGY=least-load
+      - OPENWEBUI_ADMIN_API_KEY=
+    depends_on:
+      - mongo
+    networks:
+      - llmnet
+
+  worker:
+    build: ./worker
+    container_name: llm-worker-1
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - WORKER_ID=worker-1
+      - MASTER_URL=http://YOUR_HOST:YOUR_PORT
+      - WORKER_URL=http://YOUR_HOST:YOUR_PORT
+      - DOCKER_HOST=host.docker.internal
+      - DOCKER_PORT=2375
+      - DOCKER_IMAGE=YOUR_PLAY_WITH_LINUX_IMAGE
+      - WORKER_HEALTH_REPORT_INTERVAL=30000
+    depends_on:
+      - master
+    networks:
+      - llmnet
+
+
+  nginx:
+    image: nginx:latest
+    container_name: openwebui-nginx
+    ports:
+      - "4000:80"
+    volumes:
+      - ./open-webui/nginx.conf:/etc/nginx/conf.d/default.conf
+
+networks:
+  llmnet:
+    driver: bridge
+
+volumes:
+  mongo-data:
+    driver: local
