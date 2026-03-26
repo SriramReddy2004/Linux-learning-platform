@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, MessageSquare } from 'lucide-react';
 import { containerService } from '../services/containerService';
 import socketService from '../services/socketService';
 import { useAuthStore } from '../store/authStore';
 import Terminal from '../components/Terminal';
+import AIAssistant from '../components/AIAssistant';
 import LoadingSpinner from '../components/LoadingSpinner';
 import toast from 'react-hot-toast';
 
@@ -15,6 +16,7 @@ const TerminalPage = () => {
   const [container, setContainer] = useState(null);
   const [socket, setSocket] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [aiOpen, setAiOpen] = useState(false);
 
   useEffect(() => {
     loadContainer();
@@ -65,7 +67,7 @@ const TerminalPage = () => {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-950">
+    <div className="h-[calc(100vh-4rem)] flex flex-col bg-gray-950">
       {/* Header */}
       <div className="bg-gray-900 border-b border-gray-800 px-4 py-3">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -79,12 +81,19 @@ const TerminalPage = () => {
             </button>
 
             <div className="border-l border-gray-700 pl-4">
-              <h2 className="text-white font-medium">{container.image}</h2>
+              <h2 className="text-white font-medium">{container.instanceName}</h2>
               <p className="text-sm text-gray-400">Port: {container.sshPort}</p>
             </div>
           </div>
 
           <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setAiOpen(!aiOpen)}
+              className="p-2 hover:bg-gray-800 rounded transition text-gray-300 hover:text-white"
+              title="Open AI Assistant"
+            >
+              <MessageSquare className="w-5 h-5" />
+            </button>
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-900 text-green-200">
               {container.status}
             </span>
@@ -93,8 +102,8 @@ const TerminalPage = () => {
       </div>
 
       {/* Terminal */}
-      <div className="flex-1 overflow-hidden p-4">
-        <div className="h-full max-w-7xl mx-auto">
+      <div className="overflow-none p-4">
+        <div className="max-w-7xl mx-auto">
           {socket && (
             <Terminal 
               socket={socket} 
@@ -104,6 +113,9 @@ const TerminalPage = () => {
           )}
         </div>
       </div>
+
+      {/* AI Assistant */}
+      <AIAssistant isOpen={aiOpen} onClose={() => setAiOpen(false)} />
     </div>
   );
 };

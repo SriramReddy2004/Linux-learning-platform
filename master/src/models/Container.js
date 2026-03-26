@@ -47,6 +47,11 @@ const containerSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
+  instanceName: {
+    type: String,
+    required: true,
+    description: 'Display name for this instance (user-friendly identifier)'
+  },
   resourceUsage: {
     cpuPercent: Number,
     memoryUsage: Number,

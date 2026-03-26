@@ -33,10 +33,10 @@ const initializeSocketIO = (server) => {
   io.on('connection', (socket) => {
     logger.info(`Socket connected: ${socket.id}, User: ${socket.userId}`);
 
-    // Start shell session - expects { containerId } or { sshPort, containerId }
+    // Start shell session - expects { instanceId } or { sshPort, instanceId }
     socket.on('start-shell', async ({ sshPort, containerId }) => {
       try {
-        logger.info(`Starting shell session for user ${socket.userId} on container ${containerId || 'unknown'}`);
+        logger.info(`Starting shell session for user ${socket.userId} on instance ${containerId || 'unknown'}`);
 
         // Create session record
         const session = await sessionService.createSession(socket.userId, containerId);
@@ -46,12 +46,12 @@ const initializeSocketIO = (server) => {
         let port = sshPort;
 
         if (containerId) {
-          const container = await Container.findOne({ _id: containerId });
-          if (!container) throw new Error('Container not found');
+          const instance = await Container.findOne({ _id: containerId });
+          if (!instance) throw new Error('Instance not found');
 
-          port = port || container.sshPort;
-          if (container.createdOnWorker && container.workerHost) {
-            host = container.workerHost;
+          port = port || instance.sshPort;
+          if (instance.createdOnWorker && instance.workerHost) {
+            host = instance.workerHost;
           } else {
             host = process.env.DOCKER_HOST || 'localhost';
           }
@@ -67,39 +67,45 @@ const initializeSocketIO = (server) => {
         const conn = await sshService.connect(host, port, sshUser, sshPass);
 
         // Open an interactive shell
-        conn.shell({ term: 'xterm-256color' }, (err, shellStream) => {
-          if (err) {
-            logger.error('SSH shell error:', err.message);
-            socket.emit('output', `SSH error: ${err.message}\r\n`);
-            conn.end();
-            return;
-          }
+        conn.shell(
+          {
+            term: 'xterm-256color',
+            cols: 80,
+            rows: 24,
+          },
+          (err, shellStream) => {
+            if (err) {
+              logger.error('SSH shell error:', err.message);
+              socket.emit('output', `SSH error: ${err.message}\r\n`);
+              conn.end();
+              return;
+            }
 
-          // Pipe SSH output to client
-          shellStream.on('data', (data) => {
-            socket.emit('output', data.toString());
-          });
+            // Pipe SSH output to client
+            shellStream.on('data', (data) => {
+              socket.emit('output', data.toString());
+            });
 
-          shellStream.on('close', () => {
-            socket.emit('output', '\r\n✅ Session closed.\r\n');
-            try { conn.end(); } catch (e) { /* ignore */ }
-            logger.info(`SSH shell closed for session ${session._id}`);
-          });
+            shellStream.on('close', () => {
+              socket.emit('output', '\r\n Session closed.\r\n');
+              try { conn.end(); } catch (e) { /* ignore */ }
+              logger.info(`SSH shell closed for session ${session._id}`);
+            });
 
-          // Store connection for later writes and cleanup
-          activeConnections.set(socket.id, {
-            sshConnection: shellStream,
-            rawConnection: conn,
-            containerId,
-            sessionId: session._id,
-            userId: socket.userId
-          });
+            // Store connection for later writes and cleanup
+            activeConnections.set(socket.id, {
+              sshConnection: shellStream,
+              rawConnection: conn,
+              containerId,
+              sessionId: session._id,
+              userId: socket.userId
+            });
 
-          // Notify client
-          socket.emit('shell-ready', {
-            sessionId: session._id,
-            message: 'Shell session started successfully'
-          });
+            // Notify client
+            socket.emit('shell-ready', {
+              sessionId: session._id,
+              message: 'Shell session started successfully'
+            });
         });
 
       } catch (error) {

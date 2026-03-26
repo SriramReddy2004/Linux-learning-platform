@@ -2,89 +2,98 @@ const containerService = require('../services/containerService');
 const Container = require('../models/Container');
 const logger = require('../utils/logger');
 
-// Create new container
+// Create new instance
 exports.createContainer = async (req, res, next) => {
   try {
     const userId = req.user.id;
+    const { instanceName } = req.body;
 
-    // Check if user already has active container
-    const activeContainer = await Container.findOne({
+    // Validate instanceName
+    if (!instanceName || typeof instanceName !== 'string' || instanceName.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'instanceName is required and must be a non-empty string'
+      });
+    }
+
+    // Check if user already has an active instance
+    const activeInstance = await Container.findOne({
       userId,
       status: { $in: ['created', 'running'] }
     });
 
-    if (activeContainer) {
+    if (activeInstance) {
       return res.status(400).json({
         success: false,
-        message: 'You already have an active container. Please stop it first.'
+        message: 'You already have an active instance. Please stop it first.'
       });
     }
 
-    const containerData = await containerService.createContainer(userId);
+    const instanceData = await containerService.createContainer(userId, instanceName.trim());
 
     res.status(201).json({
       success: true,
-      message: 'Container created successfully',
-      data: containerData
+      message: 'Instance created successfully',
+      data: instanceData
     });
   } catch (error) {
     next(error);
   }
 };
 
-// Get user's containers
+// Get user's instances
 exports.getUserContainers = async (req, res, next) => {
   try {
     const userId = req.user.id;
     const { status } = req.query;
 
-    const containers = await containerService.getUserContainers(userId, status);
+    const instances = await containerService.getUserContainers(userId, status);
 
     res.status(200).json({
       success: true,
-      data: { containers }
+      data: { containers: instances }
     });
   } catch (error) {
     next(error);
   }
 };
 
-// Get specific container
+// Get specific instance
 exports.getContainer = async (req, res, next) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
 
-    const container = await containerService.getContainer(id);
+    const instance = await containerService.getContainer(id);
 
-    if (container.userId.toString() !== userId) {
+    if (instance.userId.toString() !== userId) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to access this container'
+        message: 'Not authorized to access this instance'
       });
     }
 
     res.status(200).json({
       success: true,
-      data: { container }
+      data: { container: instance }
     });
   } catch (error) {
     next(error);
   }
 };
 
-// Stop container
+// Stop instance
 exports.stopContainer = async (req, res, next) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
 
-    const container = await containerService.getContainer(id);
+    const instance = await containerService.getContainer(id);
 
-    if (container.userId.toString() !== userId) {
+    if (instance.userId.toString() !== userId) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to access this container'
+        message: 'Not authorized to access this instance'
       });
     }
 
@@ -92,25 +101,25 @@ exports.stopContainer = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: 'Container stopped successfully'
+      message: 'Instance stopped successfully'
     });
   } catch (error) {
     next(error);
   }
 };
 
-// Restart container
+// Restart instance
 exports.restartContainer = async (req, res, next) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
 
-    const container = await containerService.getContainer(id);
+    const instance = await containerService.getContainer(id);
 
-    if (container.userId.toString() !== userId) {
+    if (instance.userId.toString() !== userId) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to access this container'
+        message: 'Not authorized to access this instance'
       });
     }
 
@@ -118,7 +127,7 @@ exports.restartContainer = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: 'Container restarted successfully',
+      message: 'Instance restarted successfully',
       data: result
     });
   } catch (error) {
@@ -126,18 +135,18 @@ exports.restartContainer = async (req, res, next) => {
   }
 };
 
-// Delete container
+// Delete instance
 exports.deleteContainer = async (req, res, next) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
 
-    const container = await containerService.getContainer(id);
+    const instance = await containerService.getContainer(id);
 
-    if (container.userId.toString() !== userId) {
+    if (instance.userId.toString() !== userId) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to access this container'
+        message: 'Not authorized to access this instance'
       });
     }
 
@@ -145,25 +154,25 @@ exports.deleteContainer = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: 'Container deleted successfully'
+      message: 'Instance deleted successfully'
     });
   } catch (error) {
     next(error);
   }
 };
 
-// Get container stats
+// Get instance stats
 exports.getContainerStats = async (req, res, next) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
 
-    const container = await containerService.getContainer(id);
+    const instance = await containerService.getContainer(id);
 
-    if (container.userId.toString() !== userId) {
+    if (instance.userId.toString() !== userId) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to access this container'
+        message: 'Not authorized to access this instance'
       });
     }
 

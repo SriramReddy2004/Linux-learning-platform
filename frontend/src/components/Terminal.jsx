@@ -13,8 +13,8 @@ const Terminal = ({ socket, sshPort, containerId }) => {
   useEffect(() => {
     if (!socket || !sshPort || !terminalRef.current) return;
 
-    // Initialize terminal
     const term = new XTerm({
+      rows: 10,
       cursorBlink: true,
       scrollback: 5000,
       convertEol: true,
@@ -45,7 +45,6 @@ const Terminal = ({ socket, sshPort, containerId }) => {
       },
     });
 
-    // Add addons
     const fitAddon = new FitAddon();
     const linkAddon = new WebLinksAddon();
     const searchAddon = new SearchAddon();
@@ -54,28 +53,35 @@ const Terminal = ({ socket, sshPort, containerId }) => {
     term.loadAddon(linkAddon);
     term.loadAddon(searchAddon);
 
-    // Open terminal
     term.open(terminalRef.current);
     fitAddon.fit();
     term.focus();
 
-    // Store refs
+    // 🔥 Immediately sync size
+    socket.emit('resize', {
+      rows: term.rows,
+      cols: term.cols,
+    });
+
     xtermRef.current = term;
     fitAddonRef.current = fitAddon;
 
-    // Welcome message
     term.writeln('\r\n🟢 Connecting to your Linux lab...\r\n');
 
-    // Start shell session
     socket.emit('start-shell', { sshPort, containerId });
 
-    // Listen for output
     const handleOutput = (data) => {
       term.write(data);
     };
 
     const handleShellReady = ({ message }) => {
       term.writeln(`\r\n✅ ${message}\r\n`);
+
+      // 🔥 Sync again AFTER shell starts
+      socket.emit('resize', {
+        rows: term.rows,
+        cols: term.cols,
+      });
     };
 
     const handleShellError = ({ message }) => {
@@ -86,23 +92,28 @@ const Terminal = ({ socket, sshPort, containerId }) => {
     socket.on('shell-ready', handleShellReady);
     socket.on('shell-error', handleShellError);
 
-    // Handle input
     term.onData((data) => {
       socket.emit('input', data);
     });
 
-    // Handle resize
+    // 🔥 Debounced resize
+    let resizeTimeout;
+
     const handleResize = () => {
-      fitAddon.fit();
-      socket.emit('resize', {
-        rows: term.rows,
-        cols: term.cols,
-      });
+      clearTimeout(resizeTimeout);
+
+      resizeTimeout = setTimeout(() => {
+        fitAddon.fit();
+
+        socket.emit('resize', {
+          rows: term.rows,
+          cols: term.cols,
+        });
+      }, 100);
     };
 
     window.addEventListener('resize', handleResize);
 
-    // Cleanup
     return () => {
       socket.off('output', handleOutput);
       socket.off('shell-ready', handleShellReady);
@@ -113,10 +124,10 @@ const Terminal = ({ socket, sshPort, containerId }) => {
   }, [socket, sshPort, containerId]);
 
   return (
-    <div 
-      ref={terminalRef} 
+    <div
+      ref={terminalRef}
       className="terminal-container w-full h-full"
-      style={{ minHeight: '600px' }}
+      style={{ minHeight: '550px' }}
     />
   );
 };
