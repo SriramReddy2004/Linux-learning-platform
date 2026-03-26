@@ -1,8 +1,8 @@
 import api from './api';
 
 export const containerService = {
-  async createContainer() {
-    const response = await api.post('/containers');
+  async createContainer(instanceName) {
+    const response = await api.post('/containers', { instanceName });
     return response.data;
   },
 

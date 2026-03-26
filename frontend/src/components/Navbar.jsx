@@ -14,9 +14,9 @@ const Navbar = () => {
       await authService.logout();
       logout();
       toast.success('Logged out successfully');
-      window.location.replace(
-        `http://${hostName}:4000/logout-remove-token`
-      );
+      // window.location.replace(
+      //   `http://${hostName}:4000/logout-remove-token`
+      // );
     } catch (error) {
       toast.error('Failed to logout. Please try again.');
       // Optional fallback to clear state in case of backend issue:
@@ -52,12 +52,12 @@ const Navbar = () => {
               <span>{user?.username}</span>
             </Link>
 
-            <button
+            {/* <button
               onClick={handleAIAssistant}
               className="px-3 py-1 rounded-md bg-indigo-600 text-white hover:bg-indigo-500 transition"
             >
               AI Assistant
-            </button>
+            </button> */}
 
             <button
               onClick={handleLogout}

@@ -5,20 +5,20 @@ const logger = require('../utils/logger');
 const { URL } = require('url');
 
 class ContainerService {
-  async createContainer(userId) {
+  async createContainer(userId, instanceName) {
     try {
-      logger.info(`Master: Creating container for user: ${userId}`);
+      logger.info(`Master: Creating container for user: ${userId} with name: ${instanceName}`);
 
       // Try to get a healthy worker first
       const worker = workerRegistry.selectWorker();
 
       if (worker) {
         logger.info(`Assigning container creation to worker: ${worker.workerId}`);
-        return await this.createContainerOnWorker(userId, worker);
+        return await this.createContainerOnWorker(userId, worker, instanceName);
       } else {
         logger.warn('No healthy workers available, attempting local creation');
         if (process.env.ENABLE_FALLBACK_LOCAL === 'true' && docker) {
-          return await this.createContainerLocal(userId);
+          return await this.createContainerLocal(userId, instanceName);
         } else {
           throw new Error('No workers available and local fallback disabled');
         }
@@ -30,7 +30,7 @@ class ContainerService {
   }
 
   // Create container on a worker
-  async createContainerOnWorker(userId, worker) {
+  async createContainerOnWorker(userId, worker, instanceName) {
     try {
       const containerData = {
         userId,
@@ -57,6 +57,7 @@ class ContainerService {
         workerHost,
         createdOnWorker: true,
         image: result.image,
+        instanceName,
         sshPort: result.sshPort,
         status: 'running',
         startedAt: new Date(result.startedAt)
@@ -67,6 +68,7 @@ class ContainerService {
       return {
         _id: containerDoc._id,
         containerId: result.containerId,
+        instanceName: containerDoc.instanceName,
         sshPort: result.sshPort,
         image: result.image,
         status: 'running',
@@ -81,13 +83,13 @@ class ContainerService {
   }
 
   // Create container locally (fallback)
-  async createContainerLocal(userId) {
+  async createContainerLocal(userId, instanceName) {
     try {
       if (!docker) {
         throw new Error('Docker not available for local creation');
       }
 
-      logger.info(`Master: Creating container locally for user: ${userId}`);
+      logger.info(`Master: Creating container locally for user: ${userId} with name: ${instanceName}`);
 
       const container = await docker.createContainer({
         Image: DOCKER_CONFIG.image,
@@ -118,6 +120,7 @@ class ContainerService {
         userId,
         createdOnWorker: false,
         image: DOCKER_CONFIG.image,
+        instanceName,
         sshPort: parseInt(sshPort),
         status: 'running',
         startedAt: new Date(info.State.StartedAt)
@@ -128,6 +131,7 @@ class ContainerService {
       return {
         _id: containerDoc._id,
         containerId: container.id,
+        instanceName: containerDoc.instanceName,
         sshPort: parseInt(sshPort),
         image: DOCKER_CONFIG.image,
         status: 'running',
@@ -140,81 +144,81 @@ class ContainerService {
     }
   }
 
-  // Stop container
+  // Stop instance
   async stopContainer(containerId) {
     try {
-      const container = await Container.findOne({ _id: containerId });
-      if (!container) {
-        throw new Error('Container not found in database');
+      const instance = await Container.findOne({ _id: containerId });
+      if (!instance) {
+        throw new Error('Instance not found in database');
       }
 
-      if (container.createdOnWorker && container.workerId) {
-        logger.info(`Stopping container on worker ${container.workerId}: ${containerId}`);
-        await workerRegistry.requestWorkerStopContainer(container.workerId, containerId);
-      } else if (!container.createdOnWorker && docker) {
-        logger.info(`Stopping local container: ${container.containerId}`);
-        const dockerContainer = docker.getContainer(container.containerId);
+      if (instance.createdOnWorker && instance.workerId) {
+        logger.info(`Stopping instance on worker ${instance.workerId}: ${containerId}`);
+        await workerRegistry.requestWorkerStopContainer(instance.workerId, containerId);
+      } else if (!instance.createdOnWorker && docker) {
+        logger.info(`Stopping local instance: ${instance.containerId}`);
+        const dockerContainer = docker.getContainer(instance.containerId);
         await dockerContainer.stop({ t: 5 });
       }
 
-      container.status = 'stopped';
-      container.stoppedAt = new Date();
-      await container.save();
+      instance.status = 'stopped';
+      instance.stoppedAt = new Date();
+      await instance.save();
 
-      logger.info(`Container stopped: ${containerId}`);
+      logger.info(`Instance stopped: ${containerId}`);
     } catch (error) {
-      logger.error('Error stopping container:', error.message);
+      logger.error('Error stopping instance:', error.message);
       throw error;
     }
   }
 
-  // Restart container
+  // Restart instance
   async restartContainer(containerId) {
     try {
-      const container = await Container.findOne({ _id: containerId });
-      if (!container) {
-        throw new Error('Container not found in database');
+      const instance = await Container.findOne({ _id: containerId });
+      if (!instance) {
+        throw new Error('Instance not found in database');
       }
-      containerId = container.containerId;
+      containerId = instance.containerId;
       let result;
-      if (container.createdOnWorker && container.workerId) {
-        logger.info(`Restarting container on worker ${container.workerId}: ${containerId}`);
-        result = await workerRegistry.requestWorkerRestartContainer(container.workerId, containerId);
-      } else if (!container.createdOnWorker && docker) {
-        logger.info(`Restarting local container: ${containerId}`);
+      if (instance.createdOnWorker && instance.workerId) {
+        logger.info(`Restarting instance on worker ${instance.workerId}: ${containerId}`);
+        result = await workerRegistry.requestWorkerRestartContainer(instance.workerId, containerId);
+      } else if (!instance.createdOnWorker && docker) {
+        logger.info(`Restarting local instance: ${containerId}`);
         const dockerContainer = docker.getContainer(containerId);
         await dockerContainer.restart({ t: 5 });
         const info = await dockerContainer.inspect();
         result = { sshPort: info.NetworkSettings.Ports['22/tcp']?.[0]?.HostPort };
       }
 
-      container.status = 'running';
-      container.sshPort = parseInt(result.sshPort);
-      container.lastActivityAt = new Date();
-      await container.save();
+      instance.status = 'running';
+      instance.sshPort = parseInt(result.sshPort);
+      instance.lastActivityAt = new Date();
+      await instance.save();
 
-      logger.info(`Container restarted: ${containerId}`);
+      logger.info(`Instance restarted: ${containerId}`);
       return result;
     } catch (error) {
-      logger.error('Error restarting container:', error.message);
+      logger.error('Error restarting instance:', error.message);
       throw error;
     }
   }
 
-  // Delete container
+  // Delete instance
   async deleteContainer(containerId) {
     try {
-      const container = await Container.findOne({ _id: containerId });
-      if (!container) {
-        throw new Error('Container not found in database');
+      const instance = await Container.findOne({ _id: containerId });
+      if (!instance) {
+        throw new Error('Instance not found in database');
       }
 
-      if (container.createdOnWorker && container.workerId) {
-        logger.info(`Deleting container on worker ${container.workerId}: ${containerId}`);
-        await workerRegistry.requestWorkerDeleteContainer(container.workerId, container.containerId);
-      } else if (!container.createdOnWorker && docker) {
-        logger.info(`Deleting local container: ${containerId}`);
-        const dockerContainer = docker.getContainer(container.containerId);
+      if (instance.createdOnWorker && instance.workerId) {
+        logger.info(`Deleting instance on worker ${instance.workerId}: ${containerId}`);
+        await workerRegistry.requestWorkerDeleteContainer(instance.workerId, instance.containerId);
+      } else if (!instance.createdOnWorker && docker) {
+        logger.info(`Deleting local instance: ${containerId}`);
+        const dockerContainer = docker.getContainer(instance.containerId);
         try {
           await dockerContainer.stop({ t: 5 });
         } catch (e) {
@@ -224,26 +228,26 @@ class ContainerService {
       }
 
       await Container.deleteOne({ _id: containerId });
-      logger.info(`Container deleted: ${containerId}`);
+      logger.info(`Instance deleted: ${containerId}`);
     } catch (error) {
-      logger.error('Error deleting container:', error.message);
+      logger.error('Error deleting instance:', error.message);
       throw error;
     }
   }
 
-  // Get container stats
+  // Get instance stats
   async getContainerStats(containerId) {
     try {
-      const container = await Container.findOne({ containerId });
-      if (!container) {
-        throw new Error('Container not found in database');
+      const instance = await Container.findOne({ containerId });
+      if (!instance) {
+        throw new Error('Instance not found in database');
       }
 
-      if (container.createdOnWorker && container.workerId) {
-        logger.debug(`Getting stats from worker ${container.workerId} for container: ${containerId}`);
-        return await workerRegistry.requestWorkerGetStats(container.workerId, containerId);
-      } else if (!container.createdOnWorker && docker) {
-        logger.debug(`Getting stats locally for container: ${containerId}`);
+      if (instance.createdOnWorker && instance.workerId) {
+        logger.debug(`Getting stats from worker ${instance.workerId} for instance: ${containerId}`);
+        return await workerRegistry.requestWorkerGetStats(instance.workerId, containerId);
+      } else if (!instance.createdOnWorker && docker) {
+        logger.debug(`Getting stats locally for instance: ${containerId}`);
         const dockerContainer = docker.getContainer(containerId);
         const stats = await dockerContainer.stats({ stream: false });
 
@@ -269,7 +273,7 @@ class ContainerService {
     }
   }
 
-  // Get user's containers
+  // Get user's instances
   async getUserContainers(userId, status = null) {
     try {
       const query = { userId };
@@ -277,28 +281,28 @@ class ContainerService {
         query.status = status;
       }
 
-      const containers = await Container.find(query)
+      const instances = await Container.find(query)
         .sort({ createdAt: -1 })
         .limit(50);
 
-      return containers;
+      return instances;
     } catch (error) {
-      logger.error('Error getting user containers:', error.message);
+      logger.error('Error getting user instances:', error.message);
       throw error;
     }
   }
 
-  // Get container by ID
+  // Get instance by ID
   async getContainer(containerId) {
     try {
-      const container = await Container.findOne({ _id: containerId });
-      logger.info(`Container details: ${containerId} ------------ ${JSON.stringify(container)}`);
-      if (!container) {
-        throw new Error('Container not found');
+      const instance = await Container.findOne({ _id: containerId });
+      logger.info(`Instance details: ${containerId} ------------ ${JSON.stringify(instance)}`);
+      if (!instance) {
+        throw new Error('Instance not found');
       }
-      return container;
+      return instance;
     } catch (error) {
-      logger.error('Error getting container:', error.message);
+      logger.error('Error getting instance:', error.message);
       throw error;
     }
   }

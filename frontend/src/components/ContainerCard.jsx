@@ -68,7 +68,7 @@ const ContainerCard = ({ container }) => {
       <div className="flex items-start justify-between mb-4">
         <div>
           <h3 className="text-lg font-semibold text-white">
-            {container.image}
+            {container.instanceName}
           </h3>
           <p className="text-sm text-gray-400 mt-1">
             Port: {container.sshPort}
