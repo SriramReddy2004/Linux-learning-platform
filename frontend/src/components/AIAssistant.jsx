@@ -92,10 +92,10 @@ const AIAssistant = ({ isOpen, onClose }) => {
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed right-0 top-0 h-screen w-full sm:w-96 bg-gray-900 border-l border-gray-800 shadow-2xl z-50 flex flex-col">
+    <div className={`fixed right-0 top-0 h-screen w-full sm:w-96 bg-gray-900 border-l border-gray-800 shadow-2xl z-50 flex flex-col rounded-tl-[10px] rounded-bl-[10px] transition-transform duration-300 ease-in-out ${
+      isOpen ? 'translate-x-0' : 'translate-x-full'
+    }`}>
 
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-gray-800">
@@ -220,6 +220,7 @@ const AIAssistant = ({ isOpen, onClose }) => {
             onChange={(e) => setInput(e.target.value)}
             disabled={loading}
             placeholder="Ask me anything..."
+            autoFocus={true}
             className="flex-1 px-3 py-2 bg-gray-900 border border-gray-700 rounded text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-green-500 disabled:opacity-50"
           />
           <button

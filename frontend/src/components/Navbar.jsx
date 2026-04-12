@@ -10,8 +10,8 @@ const Navbar = () => {
 
   const handleLogout = async () => {
     try {
-      const hostName = window.location.hostname;
-      await authService.logout();
+      // const hostName = window.location.hostname;
+      // await authService.logout();
       logout();
       toast.success('Logged out successfully');
       // window.location.replace(
@@ -25,10 +25,10 @@ const Navbar = () => {
     }
   };
 
-  const handleAIAssistant = async () => {
-    const hostName = window.location.hostname;
-    window.open(`http://${hostName}:4000/`).focus();
-  };
+  // const handleAIAssistant = async () => {
+  //   const hostName = window.location.hostname;
+  //   window.open(`http://${hostName}:4000/`).focus();
+  // };
 
   return (
     <nav className="bg-gray-900 border-b border-gray-800">

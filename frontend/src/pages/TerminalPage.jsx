@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Sparkles } from 'lucide-react';
 import { containerService } from '../services/containerService';
 import socketService from '../services/socketService';
 import { useAuthStore } from '../store/authStore';
@@ -92,7 +92,7 @@ const TerminalPage = () => {
               className="p-2 hover:bg-gray-800 rounded transition text-gray-300 hover:text-white"
               title="Open AI Assistant"
             >
-              <MessageSquare className="w-5 h-5" />
+              <Sparkles className="w-5 h-5" />
             </button>
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-900 text-green-200">
               {container.status}

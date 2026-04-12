@@ -55,7 +55,7 @@ const DashboardPage = () => {
         <div>
           <h1 className="text-3xl font-bold text-white">Dashboard</h1>
           <p className="text-gray-400 mt-1">
-            Manage your Linux learning containers
+            Manage your Linux learning instances
           </p>
         </div>
 
@@ -141,8 +141,8 @@ const DashboardPage = () => {
       ) : (
         <div className="text-center py-16">
           <div className="text-gray-400">
-            <p className="text-xl mb-2">No containers yet</p>
-            <p className="text-sm">Create your first container to get started!</p>
+            <p className="text-xl mb-2">No instances yet</p>
+            <p className="text-sm">Create your first instance to get started!</p>
           </div>
         </div>
       )}
