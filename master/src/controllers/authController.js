@@ -33,7 +33,7 @@ exports.register = async (req, res, next) => {
     });
 
     // Add user to openwebui
-    try {
+/*    try {
       await axios.post(`http://host.docker.internal:5000/api/v1/auths/add`, {
         name: username,
         email,
@@ -49,6 +49,7 @@ exports.register = async (req, res, next) => {
       logger.error(`Error occurred while adding user to OpenWebUI: ${JSON.stringify(error)}`);
     }
 
+    */
 
     logger.info(`New user registered: ${user.username}`);
 
@@ -69,10 +70,12 @@ exports.login = async (req, res, next) => {
     // Find user
     const user = await User.findOne({ email });
 
+    logger.info(`Login attempt for email: ${email}, ${password}`);
+
     if (!user) {
-      return res.status(401).json({
+      return res.status(404).json({
         success: false,
-        message: 'Invalid credentials'
+        message: 'User not found'
       });
     }
 
@@ -94,8 +97,9 @@ exports.login = async (req, res, next) => {
     const token = generateToken(user._id);
 
     logger.info(`User logged in: ${user.username}`);
-    let openWebUIToken = null;
+    // let openWebUIToken = null;
     // login openwebui
+    /*
     try {
       const data = await axios.post(`http://host.docker.internal:5000/api/v1/auths/signin`, {
         email,
@@ -111,17 +115,13 @@ exports.login = async (req, res, next) => {
       });
     }
 
+    */
+
     res
     .cookie("auth-token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: process.env.JWT_EXPIRE// 7 days
-    })
-    .cookie("token", openWebUIToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'Lax',
       maxAge: process.env.JWT_EXPIRE// 7 days
     })
     .status(200).json({
@@ -134,8 +134,7 @@ exports.login = async (req, res, next) => {
           email: user.email,
           role: user.role
         },
-        token,
-        openWebUIToken
+        token
       }
     });
   } catch (error) {
