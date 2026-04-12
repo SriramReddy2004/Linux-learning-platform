@@ -99,7 +99,7 @@ class ContainerService {
         Hostname: 'ubuntu-lab',
         HostConfig: {
           AutoRemove: false,
-          NetworkMode: 'egress_net',
+          // NetworkMode: 'egress_net',
           PortBindings: { '22/tcp': [{HostPort: '0'}]},
           CpuQuota: DOCKER_CONFIG.cpuQuota,
           Memory: DOCKER_CONFIG.memoryLimit
